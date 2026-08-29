@@ -11,7 +11,7 @@ import altair as alt
 # 0. 페이지 기본 설정
 # ==========================================
 st.set_page_config(page_title="강릉샌드 생산일지", page_icon="🍪")
-st.title("🍪 강릉샌드 쿠키 생산일지")
+st.title("🍪 쿠키 생산일지")
 
 # ==========================================
 # 1. 구글 시트 연결
@@ -31,8 +31,8 @@ except Exception as e:
 # ==========================================
 st.subheader("📝 횟수 입력하기")
 
-name = st.selectbox("직원 이름", ["정환", "소정", "가영"])
-time_type = st.radio("입력 시간", ["오전 (점심 전)", "오후 (퇴근 전)"])
+name = st.selectbox(["정환", "소정", "가영"])
+time_type = st.radio(["오전 (점심 전)", "오후 (퇴근 전)"])
 count = st.number_input("기계 횟수", min_value=0, step=1)
 
 if time_type == "오후 (퇴근 전)":
