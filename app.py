@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
+import altair as alt
 
 # ==========================================
 # 0. 페이지 기본 설정
@@ -57,7 +58,7 @@ st.write("---")
 # ==========================================
 tz = pytz.timezone('Asia/Seoul')
 today = datetime.now(tz)
-current_month_str = today.strftime("%Y-%m")  # 예: '2026-08'
+current_month_str = today.strftime("%Y-%m")
 
 st.subheader(f"🏆 월간 생산량 ({today.month}월 기준)")
 
@@ -72,11 +73,10 @@ for emp in ["정환", "소정", "가영"]:
 df = pd.DataFrame(all_data)
 
 if not df.empty:
-    # 이번 달(예: 2026-08)로 시작하는 데이터만 쏙 뽑아오기
     month_df = df[df['날짜'].astype(str).str.startswith(current_month_str)].copy()
     
     if not month_df.empty:
-        # X축 글씨 눕는 현상 방지! 날짜에서 '숫자(일)'만 정수로 추출
+        # 날짜에서 '숫자(일)'만 정수로 추출
         month_df['일(Day)'] = pd.to_datetime(month_df['날짜']).dt.day
         
         # 오후 기록(하루 최대 횟수)을 그날의 최종 실적으로 계산
@@ -92,9 +92,14 @@ if not df.empty:
         
         st.markdown(f"**📈 {today.month}월 일별 횟수 변화**")
         
-        # 피벗 테이블 생성 (인덱스가 '숫자'이므로 가로로 반듯하게 출력됨)
-        chart_data = daily_max.pivot(index='일(Day)', columns='이름', values='횟수').fillna(0)
-        st.line_chart(chart_data)
+        # 기본 차트 대신 Altair 라이브러리를 써서 29.00000 소수점 제거 & 세로 눕기 방지!
+        chart = alt.Chart(daily_max).mark_line(point=True).encode(
+            x=alt.X('일(Day):O', axis=alt.Axis(labelAngle=0, title='날짜 (일)')),
+            y=alt.Y('횟수:Q', title='기계 횟수'),
+            color=alt.Color('이름:N', title='직원')
+        ).properties(height=400)
+        
+        st.altair_chart(chart, use_container_width=True)
         
     else:
         st.info(f"{today.month}월에 입력된 데이터가 없어!")
