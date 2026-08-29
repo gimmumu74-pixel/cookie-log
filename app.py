@@ -15,16 +15,15 @@ st.title("🍪 강릉샌드 쿠키 생산일지")
 # ==========================================
 # 1. 구글 시트 연결
 # ==========================================
-# 스트림릿 Secrets에서 GCP_JSON 키를 가져옴
 try:
     gcp_json_str = st.secrets["GCP_JSON"]
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     creds = ServiceAccountCredentials.from_json_keyfile_dict(json.loads(gcp_json_str), scope)
     client = gspread.authorize(creds)
-    # 🚨 구글 스프레드시트 파일 이름이 '강릉샌드 생산일지'가 맞는지 확인해!
     sheet = client.open('강릉샌드 생산일지').sheet1
 except Exception as e:
-    st.error("구글 시트 연결에 실패했어. 시크릿 키 설정을 확인해 줘!")
+    # 🚨 진짜 에러 원인을 화면에 그대로 뱉어내도록 수정!
+    st.error(f"구글 시트 연결 에러 원인: {e}")
     st.stop()
 
 # ==========================================
@@ -43,13 +42,11 @@ else:
     boxes = 0
 
 if st.button("제출하기"):
-    # 버튼 누르는 순간 한국 시간으로 날짜/시간 자동 생성!
     tz = pytz.timezone('Asia/Seoul')
     now = datetime.now(tz)
     today_date = now.strftime("%Y-%m-%d")
     current_time = now.strftime("%H:%M:%S")
 
-    # 구글 시트에 데이터 한 줄 쏘기
     sheet.append_row([today_date, current_time, name, time_type, count, boxes])
     st.success(f"✅ {name}님, {today_date} 입력 완료! (현재 횟수: {count})")
 
@@ -60,20 +57,16 @@ st.write("---")
 # ==========================================
 st.subheader("🏆 오늘의 쿠키왕 (실시간 횟수 랭킹)")
 
-# 시트 전체 데이터 가져오기
 records = sheet.get_all_records()
 df = pd.DataFrame(records)
 
 if not df.empty:
-    # 오늘 날짜에 해당하는 데이터만 필터링
     tz = pytz.timezone('Asia/Seoul')
     today_str = datetime.now(tz).strftime("%Y-%m-%d")
     
-    # '날짜' 열이 문자열로 저장되므로, 오늘 날짜와 일치하는 행만 추출
     today_df = df[df['날짜'].astype(str) == today_str]
     
     if not today_df.empty:
-        # 이름별 최고 횟수 추출 및 정렬
         ranking = today_df.groupby("이름")["횟수"].max().reset_index()
         ranking = ranking.sort_values(by="횟수", ascending=False).reset_index(drop=True)
         ranking.index = ranking.index + 1
