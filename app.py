@@ -20,9 +20,9 @@ try:
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     creds = ServiceAccountCredentials.from_json_keyfile_dict(json.loads(gcp_json_str), scope)
     client = gspread.authorize(creds)
-    sheet = client.open('강릉샌드 생산일지').sheet1
+    # 전체 워크스페이스를 불러옴
+    spreadsheet = client.open('강릉샌드 생산일지')
 except Exception as e:
-    # 🚨 진짜 에러 원인을 화면에 그대로 뱉어내도록 수정!
     st.error(f"구글 시트 연결 에러 원인: {e}")
     st.stop()
 
@@ -43,12 +43,16 @@ else:
 
 if st.button("제출하기"):
     tz = pytz.timezone('Asia/Seoul')
-    now = datetime.now(tz)
-    today_date = now.strftime("%Y-%m-%d")
-    current_time = now.strftime("%H:%M:%S")
+    today_date = datetime.now(tz).strftime("%Y-%m-%d")
 
-    sheet.append_row([today_date, current_time, name, time_type, count, boxes])
-    st.success(f"✅ {name}님, {today_date} 입력 완료! (현재 횟수: {count})")
+    try:
+        # 선택한 직원 이름과 똑같은 구글 시트 탭을 찾음
+        user_sheet = spreadsheet.worksheet(name)
+        # 시간 빼고 날짜, 이름, 구분, 횟수, 쿠키통만 저장!
+        user_sheet.append_row([today_date, name, time_type, count, boxes])
+        st.success(f"✅ {name}님, 개인 탭에 {today_date} 기록 완료! (현재 횟수: {count})")
+    except gspread.exceptions.WorksheetNotFound:
+        st.error(f"🚨 구글 시트 맨 아래에 '{name}' 탭이 안 보여! 탭 이름을 정확히 만들어줘.")
 
 st.write("---")
 
@@ -57,22 +61,34 @@ st.write("---")
 # ==========================================
 st.subheader("🏆 오늘의 쿠키왕 (실시간 횟수 랭킹)")
 
-records = sheet.get_all_records()
-df = pd.DataFrame(records)
+# 3명 탭을 다 돌면서 데이터를 하나로 합침
+all_data = []
+for emp in ["정환", "소정", "가영"]:
+    try:
+        records = spreadsheet.worksheet(emp).get_all_records()
+        all_data.extend(records)
+    except:
+        pass
+
+df = pd.DataFrame(all_data)
 
 if not df.empty:
     tz = pytz.timezone('Asia/Seoul')
     today_str = datetime.now(tz).strftime("%Y-%m-%d")
     
+    # 오늘 날짜만 필터링
     today_df = df[df['날짜'].astype(str) == today_str]
     
     if not today_df.empty:
+        # 이름별 최고 횟수 추출 및 정렬
         ranking = today_df.groupby("이름")["횟수"].max().reset_index()
         ranking = ranking.sort_values(by="횟수", ascending=False).reset_index(drop=True)
         ranking.index = ranking.index + 1
         
         st.dataframe(ranking, use_container_width=True)
-        st.bar_chart(ranking.set_index("이름")["횟수"])
+        
+        # 막대그래프(bar_chart) 대신 선 그래프(line_chart)로 띄우기!
+        st.line_chart(ranking.set_index("이름")["횟수"])
     else:
         st.info("오늘 입력된 데이터가 없어! 첫 번째 쿠키왕에 도전해 봐!")
 else:
