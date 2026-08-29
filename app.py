@@ -53,9 +53,9 @@ if st.button("제출하기"):
 st.write("---")
 
 # ==========================================
-# 3. 주간 랭킹 및 생산 트렌드 (최근 7일 기준)
+# 3. 주간 생산량 (최근 7일 기준)
 # ==========================================
-st.subheader("🏆 주간 쿠키왕 (최근 7일 생산 트렌드)")
+st.subheader("🏆 주간 생산량 (최근 7일)")
 
 all_data = []
 for emp in ["정환", "소정", "가영"]:
@@ -70,19 +70,18 @@ df = pd.DataFrame(all_data)
 if not df.empty:
     tz = pytz.timezone('Asia/Seoul')
     today = datetime.now(tz)
-    week_ago = today - timedelta(days=6) # 오늘 포함 최근 7일
+    week_ago = today - timedelta(days=6)
     
     today_str = today.strftime("%Y-%m-%d")
     week_ago_str = week_ago.strftime("%Y-%m-%d")
     
-    # 최근 7일 데이터만 필터링
     week_df = df[(df['날짜'] >= week_ago_str) & (df['날짜'] <= today_str)]
     
     if not week_df.empty:
-        # 1. 일별/사람별 '가장 마지막에 적은 횟수(max)' 구하기
+        # 오후 기록이 하루 총 횟수이므로, 날짜별로 가장 큰 숫자(max)를 하루 실적으로 계산
         daily_max = week_df.groupby(['날짜', '이름'])['횟수'].max().reset_index()
         
-        # 2. 최근 7일치 횟수 총합으로 랭킹 매기기
+        # 7일 치 합산 계산
         weekly_total = daily_max.groupby('이름')['횟수'].sum().reset_index()
         weekly_total = weekly_total.sort_values(by="횟수", ascending=False).reset_index(drop=True)
         weekly_total.index = weekly_total.index + 1
@@ -90,9 +89,13 @@ if not df.empty:
         st.markdown("**👑 이번 주 총 누적 횟수**")
         st.dataframe(weekly_total, use_container_width=True)
         
-        # 3. UI가 예쁜 선 그래프 만들기 (X축: 날짜, 선: 이름)
-        st.markdown("**📈 최근 7일 횟수 변화**")
-        chart_data = daily_max.pivot(index='날짜', columns='이름', values='횟수').fillna(0)
+        # X축을 일(Day) 단위 텍스트로 짧게 변경
+        daily_max['일자'] = pd.to_datetime(daily_max['날짜']).dt.strftime('%d일')
+        
+        current_month = today.month
+        st.markdown(f"**📈 {current_month}월 일별 횟수 변화**")
+        
+        chart_data = daily_max.pivot(index='일자', columns='이름', values='횟수').fillna(0)
         st.line_chart(chart_data)
         
     else:
