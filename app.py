@@ -32,13 +32,13 @@ except Exception as e:
 st.subheader("📝 횟수 입력하기")
 
 name = st.selectbox("직원 이름", ["정환", "소정", "가영"])
-time_type = st.radio("입력 시간", ["오전 (점심 전)", "오후 (퇴근 전)"])
-count = st.number_input("기계 횟수", min_value=0, step=1)
 
-if time_type == "오후 (퇴근 전)":
-    boxes = st.number_input("총 쿠키 통 수", min_value=0, step=1)
-else:
-    boxes = 0
+# 오전/오후 라디오 버튼 제거, 바로 숫자 입력
+count = st.number_input("기계 횟수 (오늘 합계)", min_value=0, step=1)
+boxes = st.number_input("총 쿠키 통 수 (오늘 합계)", min_value=0, step=1)
+
+# 비고란 추가 (문자열 입력)
+note = st.text_input("비고 (특이사항)", placeholder="예: 장비 고장, 반죽 불량 등")
 
 if st.button("제출하기"):
     tz = pytz.timezone('Asia/Seoul')
@@ -46,7 +46,8 @@ if st.button("제출하기"):
 
     try:
         user_sheet = spreadsheet.worksheet(name)
-        user_sheet.append_row([today_date, name, time_type, count, boxes])
+        # '구분' 자리에 "합계"를 넣고, 마지막 열에 비고(note) 추가
+        user_sheet.append_row([today_date, name, "합계", count, boxes, note])
         st.success(f"✅ {name}님, 개인 탭에 {today_date} 기록 완료! (현재 횟수: {count})")
     except gspread.exceptions.WorksheetNotFound:
         st.error(f"🚨 구글 시트 맨 아래에 '{name}' 탭이 없어. 탭 이름을 다시 확인해 줘.")
@@ -79,7 +80,7 @@ if not df.empty:
         # 날짜에서 '숫자(일)'만 정수로 추출
         month_df['일(Day)'] = pd.to_datetime(month_df['날짜']).dt.day
         
-        # 오후 기록(하루 최대 횟수)을 그날의 최종 실적으로 계산
+        # 합계 기록이므로 그날의 최고 횟수를 실적으로 계산
         daily_max = month_df.groupby(['일(Day)', '이름'])['횟수'].max().reset_index()
         
         # 이번 달 총합 계산
@@ -92,7 +93,6 @@ if not df.empty:
         
         st.markdown(f"**📈 {today.month}월 일별 횟수 변화**")
         
-        # 기본 차트 대신 Altair 라이브러리를 써서 29.00000 소수점 제거 & 세로 눕기 방지!
         chart = alt.Chart(daily_max).mark_line(point=True).encode(
             x=alt.X('일(Day):O', axis=alt.Axis(labelAngle=0, title='날짜 (일)')),
             y=alt.Y('횟수:Q', title='기계 횟수'),
