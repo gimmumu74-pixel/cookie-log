@@ -13,6 +13,8 @@ import altair as alt
 st.set_page_config(page_title="강릉샌드 생산일지", page_icon="🍪")
 st.title("🍪 쿠키 생산일지")
 
+EMPLOYEES = ["정환", "소정", "종호"]
+
 # ==========================================
 # 1. 구글 시트 연결
 # ==========================================
@@ -31,7 +33,7 @@ except Exception as e:
 # ==========================================
 st.subheader("📝 횟수 입력하기")
 
-name = st.selectbox("직원 이름", ["정환", "소정", "가영"])
+name = st.selectbox("직원 이름", EMPLOYEES)
 
 # 오전/오후 라디오 버튼 제거, 바로 숫자 입력
 count = st.number_input("기계 횟수 (오늘 합계)", min_value=0, step=1)
@@ -64,7 +66,7 @@ current_month_str = today.strftime("%Y-%m")
 st.subheader(f"🏆 월간 생산량 ({today.month}월 기준)")
 
 all_data = []
-for emp in ["정환", "소정", "가영"]:
+for emp in EMPLOYEES:
     try:
         records = spreadsheet.worksheet(emp).get_all_records()
         all_data.extend(records)
